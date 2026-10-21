@@ -6,6 +6,10 @@ import java.util.Objects;
 /**
  * A payment that entered the mempool but has not been confirmed yet. The funds are not credited at
  * this point, so treat it as a hint that a payment is on its way rather than as a settlement.
+ *
+ * <p>On the wire every member of this payload, nested ones included, is prefixed with
+ * {@code unconfirmed_}, and {@code unconfirmed_status} still reads {@code completed}; the mapper
+ * strips the prefix.</p>
  */
 public final class PaymentNotConfirmedEvent implements WebhookEvent {
 
@@ -23,10 +27,10 @@ public final class PaymentNotConfirmedEvent implements WebhookEvent {
      *
      * @param type        The kind of event, always {@link WebhookType#PAYMENT_NOT_CONFIRMED}.
      * @param rawType     The raw wire value of the type.
-     * @param status      The payment status.
+     * @param status      The transaction status, {@code completed} on the wire.
      * @param amount      The payment amount in USD.
-     * @param createdAt   The moment the payment was created.
-     * @param paidAt      The moment the payment was seen.
+     * @param createdAt   The moment DV.net recorded the transaction.
+     * @param paidAt      The moment the transaction was created on the blockchain.
      * @param transaction The blockchain transaction that carried the payment.
      * @param wallet      The wallet the payment was made to.
      */
@@ -69,9 +73,10 @@ public final class PaymentNotConfirmedEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the payment status.
+     * Returns the transaction status, {@code completed} on the wire; it does not mean the payment
+     * is confirmed.
      *
-     * @return The payment status.
+     * @return The transaction status.
      */
     @Override
     public String getStatus() {
@@ -89,9 +94,9 @@ public final class PaymentNotConfirmedEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the moment the payment was created.
+     * Returns the moment DV.net recorded the transaction.
      *
-     * @return The moment the payment was created.
+     * @return The moment DV.net recorded the transaction.
      */
     @Override
     public OffsetDateTime getCreatedAt() {
@@ -99,9 +104,9 @@ public final class PaymentNotConfirmedEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the moment the payment was seen.
+     * Returns the moment the transaction was created on the blockchain.
      *
-     * @return The moment the payment was seen.
+     * @return The moment the transaction was created on the blockchain.
      */
     @Override
     public OffsetDateTime getPaidAt() {

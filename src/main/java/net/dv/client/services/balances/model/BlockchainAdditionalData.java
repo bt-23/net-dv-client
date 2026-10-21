@@ -7,8 +7,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
 /**
- * Blockchain specific details of a processing wallet. Only chains with a resource model populate a
- * member here, so every field may be {@code null}.
+ * Blockchain specific details of a processing wallet. At most one member is populated, matching
+ * the chain family of the wallet, so every field may be {@code null}.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class BlockchainAdditionalData {
@@ -16,14 +16,20 @@ public final class BlockchainAdditionalData {
     @JsonProperty("tron_data")
     private final TronData tronData;
 
+    @JsonProperty("evm_data")
+    private final EvmData evmData;
+
     /**
      * Constructs a {@code BlockchainAdditionalData}.
      *
      * @param tronData The Tron resources of the wallet, {@code null} outside Tron.
+     * @param evmData  The gas estimates of the wallet, {@code null} outside EVM chains.
      */
     @JsonCreator
-    public BlockchainAdditionalData(@JsonProperty("tron_data") final TronData tronData) {
+    public BlockchainAdditionalData(@JsonProperty("tron_data") final TronData tronData,
+                                    @JsonProperty("evm_data") final EvmData evmData) {
         this.tronData = tronData;
+        this.evmData = evmData;
     }
 
     /**
@@ -33,6 +39,15 @@ public final class BlockchainAdditionalData {
      */
     public TronData getTronData() {
         return tronData;
+    }
+
+    /**
+     * Returns the gas estimates of the wallet, {@code null} outside EVM chains.
+     *
+     * @return The gas estimates of the wallet, {@code null} outside EVM chains.
+     */
+    public EvmData getEvmData() {
+        return evmData;
     }
 
     @Override
@@ -46,18 +61,20 @@ public final class BlockchainAdditionalData {
 
         BlockchainAdditionalData that = (BlockchainAdditionalData) other;
 
-        return Objects.equals(tronData, that.tronData);
+        return Objects.equals(tronData, that.tronData)
+                && Objects.equals(evmData, that.evmData);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tronData);
+        return Objects.hash(tronData, evmData);
     }
 
     @Override
     public String toString() {
         return "BlockchainAdditionalData{"
                 + "tronData=" + tronData
+                + ", evmData=" + evmData
                 + '}';
     }
 }

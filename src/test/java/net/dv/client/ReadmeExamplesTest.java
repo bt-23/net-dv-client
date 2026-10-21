@@ -15,6 +15,8 @@ import net.dv.client.services.wallets.model.Wallet;
 import net.dv.client.services.wallets.model.WalletAddress;
 import net.dv.client.services.wallets.model.WalletSummary;
 import net.dv.client.services.webhooks.Webhooks;
+import net.dv.client.services.webhooks.model.AmlCheck;
+import net.dv.client.services.webhooks.model.PaymentAmlBlockedEvent;
 import net.dv.client.services.webhooks.model.PaymentNotConfirmedEvent;
 import net.dv.client.services.webhooks.model.PaymentReceivedEvent;
 import net.dv.client.services.webhooks.model.WebhookEvent;
@@ -60,7 +62,7 @@ class ReadmeExamplesTest {
     private void services(final DvNet dvNet) throws DvNetException {
         List<Currency> currencies = dvNet.currencies().list();
         ExtendedCurrencies grouped = dvNet.currencies().listExtended();
-        CurrencyRate rate = dvNet.currencies().rate("USDT.Tron");
+        List<CurrencyRate> rates = dvNet.currencies().rates();
 
         Wallet wallet = dvNet.wallets().create(
                 CreateWalletOptions.builder("customer-42")
@@ -76,6 +78,8 @@ class ReadmeExamplesTest {
 
         List<WalletSummary> balances = dvNet.wallets().hotBalances("100");
 
+        dvNet.wallets().markDirty("TXk9ArDLcnbAd7BsxHhY5nCcJPBQr9dyMV");
+
         ExchangeBalances exchange = dvNet.balances().exchange();
 
         List<ProcessingWalletBalance> processing = dvNet.balances().processingWallets(
@@ -87,6 +91,7 @@ class ReadmeExamplesTest {
                         .build());
 
         WithdrawalStatus status = dvNet.withdrawals().get(withdrawal.getId());
+        WithdrawalStatus sameStatus = dvNet.withdrawals().get("payout-77");
 
         dvNet.withdrawals().remove(withdrawal.getId());
 
@@ -102,14 +107,19 @@ class ReadmeExamplesTest {
             fulfilOrder(event.getWallet().getStoreExternalId(), event.getTransaction());
         } else if (event instanceof PaymentNotConfirmedEvent) {
             markPending(event.getWallet().getStoreExternalId());
+        } else if (event instanceof PaymentAmlBlockedEvent) {
+            flagForReview(((PaymentAmlBlockedEvent) event).getAmlCheck());
         } else if (event instanceof WithdrawalEvent) {
             recordPayout(((WithdrawalEvent) event).getWithdrawalId());
         }
 
-        WebhookTransaction transaction = event.getTransaction();
-        String deduplicationKey = transaction.getTxHash() + ":" + transaction.getBcUniqKey();
+        String deduplicationKey = event.getType() + ":" + event.getTransaction().getTxId();
 
         String header = Webhooks.SIGNATURE_HEADER;
+        String acknowledgement = Webhooks.SUCCESS_RESPONSE;
+    }
+
+    private void flagForReview(final AmlCheck amlCheck) {
     }
 
     @SuppressWarnings("unused")

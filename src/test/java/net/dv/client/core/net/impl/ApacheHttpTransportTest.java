@@ -22,6 +22,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -98,13 +100,23 @@ class ApacheHttpTransportTest {
 
     @Test
     void buildsTheQueryStringFromTheRequestParameters() throws Exception {
-        transport.execute(HttpRequest.builder(HttpMethod.GET, "/api/v1/external/processing-wallet-balances")
-                .query("blockchains", "tron,ethereum")
-                .query("currencies", "USDT.Tron")
+        transport.execute(HttpRequest.builder(HttpMethod.GET, "/api/v1/external/wallet/balance/hot")
+                .query("min_balance", "10")
                 .build());
 
         String query = lastExchange.get().getRequestURI().getQuery();
-        assertEquals("blockchains=tron,ethereum&currencies=USDT.Tron", query);
+        assertEquals("min_balance=10", query);
+    }
+
+    @Test
+    void repeatsTheKeyOfAMultiValuedParameter() throws Exception {
+        transport.execute(HttpRequest.builder(HttpMethod.GET, "/api/v1/external/processing-wallet-balances")
+                .query("blockchains", Arrays.asList("tron", "ethereum"))
+                .query("currencies", Collections.singletonList("USDT.Tron"))
+                .build());
+
+        String query = lastExchange.get().getRequestURI().getQuery();
+        assertEquals("blockchains=tron&blockchains=ethereum&currencies=USDT.Tron", query);
     }
 
     @Test

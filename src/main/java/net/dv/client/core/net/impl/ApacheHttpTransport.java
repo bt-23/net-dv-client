@@ -24,6 +24,7 @@ import org.apache.hc.core5.net.URIBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -172,8 +173,10 @@ public class ApacheHttpTransport implements HttpTransport {
         try {
             URIBuilder builder = new URIBuilder(host + request.getPath());
 
-            for (Map.Entry<String, String> parameter : request.getQueryParameters().entrySet()) {
-                builder.addParameter(parameter.getKey(), parameter.getValue());
+            for (Map.Entry<String, List<String>> parameter : request.getQueryParameters().entrySet()) {
+                for (String value : parameter.getValue()) {
+                    builder.addParameter(parameter.getKey(), value);
+                }
             }
 
             return builder.build();

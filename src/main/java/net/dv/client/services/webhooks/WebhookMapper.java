@@ -1,23 +1,32 @@
 package net.dv.client.services.webhooks;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import net.dv.client.core.exception.DvNetInvalidWebhookException;
 import net.dv.client.core.helper.DateTimes;
+import net.dv.client.services.webhooks.model.AmlCheck;
+import net.dv.client.services.webhooks.model.PaymentAmlBlockedEvent;
 import net.dv.client.services.webhooks.model.PaymentNotConfirmedEvent;
 import net.dv.client.services.webhooks.model.PaymentReceivedEvent;
 import net.dv.client.services.webhooks.model.WebhookEvent;
 import net.dv.client.services.webhooks.model.WebhookTransaction;
 import net.dv.client.services.webhooks.model.WebhookType;
 import net.dv.client.services.webhooks.model.WebhookWallet;
-import com.fasterxml.jackson.databind.JsonNode;
 import net.dv.client.services.webhooks.model.WithdrawalEvent;
+
+import java.time.OffsetDateTime;
 
 /**
  * Turns a raw webhook document into a {@link WebhookEvent}.
  *
- * <p>The three webhook shapes are told apart by their members rather than by a discriminator: a
- * mempool notification prefixes every member with {@code unconfirmed_}, a withdrawal notification
- * announces the withdrawal type, and anything else carrying a {@code type} is a confirmed
- * payment.</p>
+ * <p>The shapes follow the DV.net server rather than the published documentation:</p>
+ * <ul>
+ *     <li>a mempool notification prefixes every member, nested ones included, with
+ *     {@code unconfirmed_};</li>
+ *     <li>a withdrawal notification carries {@code withdrawal_id} but neither {@code status} nor
+ *     {@code wallet};</li>
+ *     <li>an AML blocked notification carries an {@code aml_check} member;</li>
+ *     <li>anything else carrying a {@code type} is a confirmed payment.</li>
+ * </ul>
  */
 public class WebhookMapper {
 
@@ -43,10 +52,16 @@ public class WebhookMapper {
 
             if (root.has("type")) {
                 String rawType = text(root, "type");
-                boolean isWithdrawal = root.has("withdrawal_id")
-                        || WebhookType.WITHDRAWAL_FROM_PROCESSING_RECEIVED.getValue().equals(rawType);
+                WebhookType type = WebhookType.fromValue(rawType);
 
-                return isWithdrawal ? mapWithdrawal(root, rawType) : mapPaymentReceived(root, rawType);
+                if (type == WebhookType.WITHDRAWAL_FROM_PROCESSING_RECEIVED || root.has("withdrawal_id")) {
+                    return mapWithdrawal(root, rawType);
+                }
+                if (type == WebhookType.PAYMENT_AML_BLOCKED || root.has("aml_check")) {
+                    return mapPaymentAmlBlocked(root, rawType);
+                }
+
+                return mapPaymentReceived(root, rawType);
             }
         } catch (RuntimeException e) {
             throw new DvNetInvalidWebhookException("Unable to map the webhook payload: " + e.getMessage(), e);
@@ -66,6 +81,19 @@ public class WebhookMapper {
                 timestamp(root, "paid_at"),
                 mapTransaction(root.get("transactions"), ""),
                 mapWallet(root.get("wallet"), ""));
+    }
+
+    private PaymentAmlBlockedEvent mapPaymentAmlBlocked(final JsonNode root, final String rawType) {
+        return new PaymentAmlBlockedEvent(
+                WebhookType.fromValue(rawType),
+                rawType,
+                text(root, "status"),
+                text(root, "amount"),
+                timestamp(root, "created_at"),
+                timestamp(root, "paid_at"),
+                mapTransaction(root.get("transactions"), ""),
+                mapWallet(root.get("wallet"), ""),
+                mapAmlCheck(root.get("aml_check")));
     }
 
     private WithdrawalEvent mapWithdrawal(final JsonNode root, final String rawType) {
@@ -122,12 +150,26 @@ public class WebhookMapper {
                 text(node, prefix + "store_external_id"));
     }
 
+    private AmlCheck mapAmlCheck(final JsonNode node) {
+        if (node == null || !node.isObject()) {
+            return null;
+        }
+
+        return new AmlCheck(
+                text(node, "id"),
+                text(node, "score"),
+                text(node, "status"),
+                text(node, "risk_level"),
+                timestamp(node, "created_at"),
+                timestamp(node, "updated_at"));
+    }
+
     private static String text(final JsonNode node, final String member) {
         JsonNode value = node.get(member);
         return value == null || value.isNull() ? null : value.asText();
     }
 
-    private static java.time.OffsetDateTime timestamp(final JsonNode node, final String member) {
+    private static OffsetDateTime timestamp(final JsonNode node, final String member) {
         return DateTimes.parse(text(node, member));
     }
 }

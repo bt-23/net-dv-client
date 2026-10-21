@@ -14,6 +14,12 @@ public enum WebhookType {
     /** A withdrawal from a processing wallet reached the recipient. */
     WITHDRAWAL_FROM_PROCESSING_RECEIVED("WithdrawalFromProcessingReceived"),
 
+    /**
+     * A payment was held back by the anti money laundering screening. Delivered to the endpoints
+     * subscribed to {@link #PAYMENT_NOT_CONFIRMED}.
+     */
+    PAYMENT_AML_BLOCKED("PaymentAMLBlocked"),
+
     /** A type this version of the client does not know about yet. */
     UNKNOWN("");
 

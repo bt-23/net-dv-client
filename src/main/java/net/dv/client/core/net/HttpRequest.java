@@ -2,8 +2,11 @@ package net.dv.client.core.net;
 
 import net.dv.client.core.helper.Strings;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -14,14 +17,20 @@ public final class HttpRequest {
 
     private final HttpMethod method;
     private final String path;
-    private final Map<String, String> queryParameters;
+    private final Map<String, List<String>> queryParameters;
     private final String body;
     private final RequestOptions options;
 
     private HttpRequest(final Builder builder) {
+        Map<String, List<String>> parameters = new LinkedHashMap<String, List<String>>();
+        for (Map.Entry<String, List<String>> parameter : builder.queryParameters.entrySet()) {
+            parameters.put(parameter.getKey(),
+                    Collections.unmodifiableList(new ArrayList<String>(parameter.getValue())));
+        }
+
         this.method = builder.method;
         this.path = builder.path;
-        this.queryParameters = Collections.unmodifiableMap(new LinkedHashMap<>(builder.queryParameters));
+        this.queryParameters = Collections.unmodifiableMap(parameters);
         this.body = builder.body;
         this.options = builder.options;
     }
@@ -45,12 +54,24 @@ public final class HttpRequest {
     }
 
     /**
-     * Returns the query parameters of the request, in insertion order.
+     * Returns the query parameters of the request, in insertion order. A parameter holding several
+     * values is sent repeated, {@code name=a&name=b}.
      *
      * @return An unmodifiable map of query parameters, empty when none were added.
      */
-    public Map<String, String> getQueryParameters() {
+    public Map<String, List<String>> getQueryParameters() {
         return queryParameters;
+    }
+
+    /**
+     * Returns the first value of a query parameter.
+     *
+     * @param name The parameter name.
+     * @return The first value, or {@code null} when the parameter is absent.
+     */
+    public String getQueryParameter(final String name) {
+        List<String> values = queryParameters.get(name);
+        return values == null || values.isEmpty() ? null : values.get(0);
     }
 
     /**
@@ -89,7 +110,7 @@ public final class HttpRequest {
 
         private final HttpMethod method;
         private final String path;
-        private final Map<String, String> queryParameters = new LinkedHashMap<>();
+        private final Map<String, List<String>> queryParameters = new LinkedHashMap<String, List<String>>();
         private String body;
         private RequestOptions options;
 
@@ -107,7 +128,31 @@ public final class HttpRequest {
          */
         public Builder query(final String name, final String value) {
             if (Strings.isNotBlank(value)) {
-                this.queryParameters.put(name, value);
+                List<String> values = queryParameters.get(name);
+                if (values == null) {
+                    values = new ArrayList<String>();
+                    queryParameters.put(name, values);
+                }
+                values.add(value);
+            }
+            return this;
+        }
+
+        /**
+         * Adds a query parameter once per value, ignoring {@code null} and blank values.
+         *
+         * <p>The merchant API binds list parameters from repeated keys only; a comma separated
+         * value would be read as one single element.</p>
+         *
+         * @param name   The parameter name.
+         * @param values The parameter values, may be {@code null}.
+         * @return The builder instance.
+         */
+        public Builder query(final String name, final Collection<String> values) {
+            if (values != null) {
+                for (String value : values) {
+                    query(name, value);
+                }
             }
             return this;
         }

@@ -12,6 +12,7 @@ class WebhookTypeTest {
         assertEquals(WebhookType.PAYMENT_NOT_CONFIRMED, WebhookType.fromValue("PaymentNotConfirmed"));
         assertEquals(WebhookType.WITHDRAWAL_FROM_PROCESSING_RECEIVED,
                 WebhookType.fromValue("WithdrawalFromProcessingReceived"));
+        assertEquals(WebhookType.PAYMENT_AML_BLOCKED, WebhookType.fromValue("PaymentAMLBlocked"));
     }
 
     @Test

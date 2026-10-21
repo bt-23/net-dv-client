@@ -43,11 +43,15 @@ Every call may throw a checked `DvNetException`. See [Error handling](#error-han
 ```java
 List<Currency> currencies = dvNet.currencies().list();
 ExtendedCurrencies grouped = dvNet.currencies().listExtended();
-CurrencyRate rate = dvNet.currencies().rate("USDT.Tron");
+List<CurrencyRate> rates = dvNet.currencies().rates();
 ```
 
 `listExtended()` returns the same catalogue grouped by token and by blockchain, which is what you
 want when rendering a currency picker.
+
+`rates()` returns one USD rate per ticker (`USDT`, `BTC`, ...). The server has no per currency rate
+route. `getRate()` already includes the store rate scale, and `getOriginalRate()` is the raw source
+rate.
 
 ### Wallets
 
@@ -74,6 +78,15 @@ Aggregated hot wallet balances, optionally filtered to the currencies holding at
 List<WalletSummary> balances = dvNet.wallets().hotBalances("100");
 ```
 
+Flag an address that received tainted funds so it is no longer handed out:
+
+```java
+dvNet.wallets().markDirty("TXk9ArDLcnbAd7BsxHhY5nCcJPBQr9dyMV");
+```
+
+An active address reports `getDeletedAt() == null`. On the wire the server sends Go's zero time
+`0001-01-01T00:00:00Z`, which the client maps to `null`.
+
 ### Balances
 
 ```java
@@ -84,10 +97,15 @@ List<ProcessingWalletBalance> processing = dvNet.balances().processingWallets(
         Collections.singletonList("USDT.Tron"));
 ```
 
+Each filter value is sent as a repeated query key (`blockchains=tron&blockchains=ethereum`). The
+server does not split comma separated values, so a joined string would match nothing.
+
 ### Withdrawals
 
-`requestId` is your own identifier and makes the call idempotent, so a retry after a timeout will
-not pay out twice.
+`requestId` is your own identifier and must be unique. The server rejects a duplicate with a 422,
+so it never pays out twice. It does not return the existing withdrawal, though. After a timeout,
+look the withdrawal up by its `requestId`: `get` accepts either the withdrawal ID or your request
+ID.
 
 ```java
 Withdrawal withdrawal = dvNet.withdrawals().create(
@@ -95,9 +113,18 @@ Withdrawal withdrawal = dvNet.withdrawals().create(
                 .build());
 
 WithdrawalStatus status = dvNet.withdrawals().get(withdrawal.getId());
+WithdrawalStatus sameStatus = dvNet.withdrawals().get("payout-77");
 
 dvNet.withdrawals().remove(withdrawal.getId()); // only while still queued
 ```
+
+| Status | Meaning when creating a withdrawal |
+| --- | --- |
+| 422 | Duplicate `requestId`, or a validation failure |
+| 423 | Processing is not initialised for the merchant |
+| 404 | No processing wallet holds the currency |
+| 409 | The address does not match the currency |
+| 406 | The destination is one of your hot wallets |
 
 ### Transactions
 
@@ -107,8 +134,12 @@ List<UnconfirmedTransaction> pending = dvNet.transactions().listUnconfirmed();
 
 ## Webhooks
 
+This section follows the dv-merchant server source. The published webhook guide differs from it in
+several places.
+
 DV.net signs each delivery with the SHA-256 hash of the raw body concatenated with your webhook
-secret, hex encoded, and sends it in the `X-Sign` header.
+secret, hex encoded, and sends it in the `X-Sign` header as a `POST` with
+`Content-Type: application/json`.
 
 Verify against the body **exactly as it arrived**. Parsing and re-serializing changes the bytes and
 the signature will no longer match, so read the raw body before any JSON binding runs.
@@ -123,25 +154,57 @@ if (event instanceof PaymentReceivedEvent) {
     fulfilOrder(event.getWallet().getStoreExternalId(), event.getTransaction());
 } else if (event instanceof PaymentNotConfirmedEvent) {
     markPending(event.getWallet().getStoreExternalId());
+} else if (event instanceof PaymentAmlBlockedEvent) {
+    flagForReview(((PaymentAmlBlockedEvent) event).getAmlCheck());
 } else if (event instanceof WithdrawalEvent) {
     recordPayout(((WithdrawalEvent) event).getWithdrawalId());
 }
+
+response.setContentType("application/json");
+response.getWriter().write(Webhooks.SUCCESS_RESPONSE);
 ```
 
-The three event types share the `WebhookEvent` accessors, so the fields common to all of them can be
-read without casting. `PaymentNotConfirmedEvent` arrives with every member prefixed `unconfirmed_` on
-the wire; the client strips that prefix, so it reads like the other two.
+### Acknowledging a delivery
+
+DV.net only counts a delivery as acknowledged when the response body is `{"success":true}`. The
+status code alone is not enough: an empty `200` is treated as a failure and retried. Redeliveries
+back off exponentially, starting at one minute and capped at one day, for up to thirty attempts by
+default. Return `Webhooks.SUCCESS_RESPONSE` once the event is stored, including for a duplicate you
+already handled.
+
+### Event shapes
+
+| Event | `type` on the wire | Notes |
+| --- | --- | --- |
+| `PaymentReceivedEvent` | `PaymentReceived` | `status` is always `completed`. |
+| `PaymentNotConfirmedEvent` | `PaymentNotConfirmed` | Every member, nested ones included, is prefixed `unconfirmed_`; the client strips the prefix. |
+| `PaymentAmlBlockedEvent` | `PaymentAMLBlocked` | Sent to endpoints subscribed to `PaymentNotConfirmed`. Unprefixed, with an extra `aml_check`. The funds are not credited. |
+| `WithdrawalEvent` | `WithdrawalFromProcessingReceived` | Carries `withdrawal_id`, but no `status` and no `wallet`, so `getStatus()` and `getWallet()` return `null`. |
+
+Other details the guide gets wrong:
+
+- **Timestamps never carry an offset**, for example `2025-10-06T12:39:39.457399475`. The server
+  stores them in Postgres `timestamp` columns without a time zone. The client reads them as UTC.
+- **`paid_at` is the blockchain time of the transaction**, and `created_at` is when DV.net recorded
+  it.
+- **A deposit can be unlinked from any customer wallet.** In that case `wallet.id` is `null` and
+  `store_external_id` is `""`. `bc_uniq_key` may also be `null`.
+- **Manual resends and dashboard test deliveries skip the signature** when the store has no secret:
+  `X-Sign` is then empty. `verify` always rejects an empty signature or a blank secret, so set a
+  secret in the merchant settings.
 
 `constructEvent` throws `DvNetInvalidWebhookException` when the signature does not match or the
 payload is not a known webhook shape. To split the two steps, use `verify(payload, signature,
 secret)` and `parse(payload)`.
 
-DV.net retries a delivery up to thirty times until your endpoint acknowledges it, so make your
-handler idempotent. `txHash` together with `bcUniqKey` identifies an event uniquely:
+### Deduplication
+
+Besides the automatic retries, a merchant can resend any webhook by hand from the dashboard, and a
+manual resend bypasses the server's own already-sent check. Deduplicate on the event type together
+with the transaction ID, which is the same key the server uses:
 
 ```java
-WebhookTransaction transaction = event.getTransaction();
-String deduplicationKey = transaction.getTxHash() + ":" + transaction.getBcUniqKey();
+String deduplicationKey = event.getType() + ":" + event.getTransaction().getTxId();
 ```
 
 ## Error handling
@@ -211,8 +274,8 @@ The response models are immutable classes with JavaBean getters, value based `eq
 later will not break an existing integration.
 
 Timestamps are `OffsetDateTime`. The client registers its own Jackson time module rather than
-depending on `jackson-datatype-jsr310`, because some webhook payloads carry a timestamp without an
-offset; those are read as UTC.
+depending on `jackson-datatype-jsr310`, for two reasons. Webhook timestamps carry no offset and are
+read as UTC. Go's zero time `0001-01-01T00:00:00Z` means "unset" and is mapped to `null`.
 
 ## Development
 

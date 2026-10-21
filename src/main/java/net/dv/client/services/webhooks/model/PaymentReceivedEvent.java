@@ -23,10 +23,10 @@ public final class PaymentReceivedEvent implements WebhookEvent {
      *
      * @param type        The kind of event, always {@link WebhookType#PAYMENT_RECEIVED}.
      * @param rawType     The raw wire value of the type.
-     * @param status      The payment status, for example {@code completed}.
+     * @param status      The transaction status, {@code completed} on the wire.
      * @param amount      The payment amount in USD.
-     * @param createdAt   The moment the payment was created.
-     * @param paidAt      The moment the payment was confirmed.
+     * @param createdAt   The moment DV.net recorded the transaction.
+     * @param paidAt      The moment the transaction was created on the blockchain.
      * @param transaction The blockchain transaction that carried the payment.
      * @param wallet      The wallet the payment was made to.
      */
@@ -69,9 +69,9 @@ public final class PaymentReceivedEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the payment status, for example {@code completed}.
+     * Returns the transaction status, {@code completed} on the wire.
      *
-     * @return The payment status, for example {@code completed}.
+     * @return The transaction status.
      */
     @Override
     public String getStatus() {
@@ -89,9 +89,9 @@ public final class PaymentReceivedEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the moment the payment was created.
+     * Returns the moment DV.net recorded the transaction.
      *
-     * @return The moment the payment was created.
+     * @return The moment DV.net recorded the transaction.
      */
     @Override
     public OffsetDateTime getCreatedAt() {
@@ -99,9 +99,9 @@ public final class PaymentReceivedEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the moment the payment was confirmed.
+     * Returns the moment the transaction was created on the blockchain.
      *
-     * @return The moment the payment was confirmed.
+     * @return The moment the transaction was created on the blockchain.
      */
     @Override
     public OffsetDateTime getPaidAt() {

@@ -12,7 +12,6 @@ import net.dv.client.services.currencies.model.CurrencyRate;
 import net.dv.client.services.currencies.model.ExtendedCurrencies;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * The currency catalogue of a store, and the exchange rates used to price an invoice.
@@ -21,6 +20,7 @@ public final class Currencies extends BaseService {
 
     private static final String CURRENCIES_PATH = "/api/v1/external/store/currencies";
     private static final String EXTENDED_CURRENCIES_PATH = "/api/v1/external/store/currencies-extended";
+    private static final String RATES_PATH = "/api/v1/external/store/currencies/rate";
 
     /**
      * Constructs the service.
@@ -92,31 +92,29 @@ public final class Currencies extends BaseService {
     }
 
     /**
-     * Retrieves the exchange rate of a currency.
+     * Lists the USD exchange rates of the currencies enabled on the store, one entry per currency
+     * ticker. The merchant API has no per currency rate route.
      *
-     * @param currencyId The currency identifier, for example {@code USDT.Tron}.
-     * @return The exchange rate of the currency.
+     * @return The exchange rates of the store currencies.
      * @throws DvNetException If the request fails or the response cannot be decoded.
      */
-    public CurrencyRate rate(final String currencyId) throws DvNetException {
-        return rate(currencyId, null);
+    public List<CurrencyRate> rates() throws DvNetException {
+        return rates(null);
     }
 
     /**
-     * Retrieves the exchange rate of a currency.
+     * Lists the USD exchange rates of the currencies enabled on the store, one entry per currency
+     * ticker. The merchant API has no per currency rate route.
      *
-     * @param currencyId The currency identifier, for example {@code USDT.Tron}.
-     * @param options    The per request overrides, may be {@code null}.
-     * @return The exchange rate of the currency.
+     * @param options The per request overrides, may be {@code null}.
+     * @return The exchange rates of the store currencies.
      * @throws DvNetException If the request fails or the response cannot be decoded.
      */
-    public CurrencyRate rate(final String currencyId, final RequestOptions options) throws DvNetException {
-        Objects.requireNonNull(currencyId, "currencyId");
-
-        HttpRequest request = HttpRequest.builder(HttpMethod.GET, CURRENCIES_PATH + "/" + currencyId + "/rate")
+    public List<CurrencyRate> rates(final RequestOptions options) throws DvNetException {
+        HttpRequest request = HttpRequest.builder(HttpMethod.GET, RATES_PATH)
                 .options(options)
                 .build();
 
-        return send(request, CurrencyRate.class);
+        return sendForList(request, CurrencyRate.class);
     }
 }

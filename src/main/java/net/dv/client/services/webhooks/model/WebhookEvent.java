@@ -5,9 +5,12 @@ import java.time.OffsetDateTime;
 /**
  * A decoded DV.net webhook.
  *
- * <p>Three implementations exist: {@link PaymentReceivedEvent}, {@link PaymentNotConfirmedEvent} and
- * {@link WithdrawalEvent}. Tell them apart with {@code instanceof}, or branch on {@link #getType()}
- * when you only care about the kind of event.</p>
+ * <p>Four implementations exist: {@link PaymentReceivedEvent}, {@link PaymentNotConfirmedEvent},
+ * {@link PaymentAmlBlockedEvent} and {@link WithdrawalEvent}. Tell them apart with
+ * {@code instanceof}, or branch on {@link #getType()} when you only care about the kind of
+ * event.</p>
+ *
+ * <p>Webhook timestamps carry no offset on the wire and are read as UTC.</p>
  */
 public interface WebhookEvent {
 
@@ -27,9 +30,10 @@ public interface WebhookEvent {
     String getRawType();
 
     /**
-     * Returns the status of the payment or withdrawal.
+     * Returns the status of the transaction. Deposit events always carry {@code completed};
+     * withdrawal events carry no status at all.
      *
-     * @return The status, for example {@code completed}.
+     * @return The status, or {@code null} when the payload carried none.
      */
     String getStatus();
 
@@ -41,16 +45,16 @@ public interface WebhookEvent {
     String getAmount();
 
     /**
-     * Returns the moment the event was created.
+     * Returns the moment DV.net recorded the transaction.
      *
-     * @return The creation timestamp.
+     * @return The creation timestamp, or {@code null} when the payload carried none.
      */
     OffsetDateTime getCreatedAt();
 
     /**
-     * Returns the moment the payment or withdrawal settled.
+     * Returns the moment the transaction was created on the blockchain.
      *
-     * @return The settlement timestamp.
+     * @return The network timestamp, or {@code null} when the payload carried none.
      */
     OffsetDateTime getPaidAt();
 
@@ -62,7 +66,7 @@ public interface WebhookEvent {
     WebhookTransaction getTransaction();
 
     /**
-     * Returns the wallet the event refers to.
+     * Returns the wallet the event refers to. Withdrawal events carry no wallet.
      *
      * @return The wallet, or {@code null} when the payload carried none.
      */

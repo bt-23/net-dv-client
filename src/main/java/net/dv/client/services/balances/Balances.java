@@ -102,15 +102,11 @@ public final class Balances extends BaseService {
                                                            final Collection<String> currencies,
                                                            final RequestOptions options) throws DvNetException {
         HttpRequest request = HttpRequest.builder(HttpMethod.GET, PROCESSING_WALLET_BALANCES_PATH)
-                .query("blockchains", join(blockchains))
-                .query("currencies", join(currencies))
+                .query("blockchains", blockchains)
+                .query("currencies", currencies)
                 .options(options)
                 .build();
 
         return sendForList(request, ProcessingWalletBalance.class);
-    }
-
-    private static String join(final Collection<String> values) {
-        return values == null || values.isEmpty() ? null : String.join(",", values);
     }
 }

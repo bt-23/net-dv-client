@@ -121,20 +121,30 @@ class CurrenciesTest {
     }
 
     @Test
-    void rateBuildsThePathFromTheCurrencyId() throws Exception {
-        when(transport.execute(any(HttpRequest.class))).thenReturn(new HttpResponse(200, Payloads.CURRENCY_RATE));
+    void ratesCallsTheStoreRatesEndpoint() throws Exception {
+        when(transport.execute(any(HttpRequest.class))).thenReturn(new HttpResponse(200, Payloads.CURRENCY_RATES));
 
-        CurrencyRate rate = currencies.rate("USDT.Tron");
+        currencies.rates();
 
-        assertEquals("/api/v1/external/store/currencies/USDT.Tron/rate", capturedRequest().getPath());
-        assertEquals("USDT", rate.getCode());
-        assertEquals("1.0002", rate.getRate());
-        assertEquals("binance", rate.getRateSource());
+        HttpRequest request = capturedRequest();
+        assertEquals(HttpMethod.GET, request.getMethod());
+        assertEquals("/api/v1/external/store/currencies/rate", request.getPath());
+        assertTrue(request.getQueryParameters().isEmpty());
     }
 
     @Test
-    void rateRejectsAMissingCurrencyId() {
-        assertThrows(NullPointerException.class, () -> currencies.rate(null));
+    void ratesDecodesTheScaledAndTheOriginalRateOfEveryTicker() throws Exception {
+        when(transport.execute(any(HttpRequest.class))).thenReturn(new HttpResponse(200, Payloads.CURRENCY_RATES));
+
+        List<CurrencyRate> rates = currencies.rates();
+
+        assertEquals(2, rates.size());
+        CurrencyRate usdt = rates.get(0);
+        assertEquals("USDT", usdt.getCode());
+        assertEquals("1.0102", usdt.getRate());
+        assertEquals("1.0002", usdt.getOriginalRate());
+        assertEquals("binance", usdt.getRateSource());
+        assertEquals("BTC", rates.get(1).getCode());
     }
 
     private HttpRequest capturedRequest() throws Exception {

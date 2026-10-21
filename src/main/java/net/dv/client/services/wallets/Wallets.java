@@ -11,6 +11,7 @@ import net.dv.client.services.wallets.model.CreateWalletOptions;
 import net.dv.client.services.wallets.model.Wallet;
 import net.dv.client.services.wallets.model.WalletSummary;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,6 +22,7 @@ public final class Wallets extends BaseService {
 
     private static final String WALLET_PATH = "/api/v1/external/wallet";
     private static final String HOT_BALANCE_PATH = "/api/v1/external/wallet/balance/hot";
+    private static final String DIRTY_ADDRESS_PATH = "/api/v1/external/wallet/addresses/dirty";
 
     /**
      * Constructs the service.
@@ -113,5 +115,35 @@ public final class Wallets extends BaseService {
                 .build();
 
         return sendForList(request, WalletSummary.class);
+    }
+
+    /**
+     * Flags a deposit address as dirty, for example after it received funds from a sanctioned
+     * source, so the merchant stops reusing it.
+     *
+     * @param address The blockchain address to flag.
+     * @throws DvNetException If the request fails.
+     */
+    public void markDirty(final String address) throws DvNetException {
+        markDirty(address, null);
+    }
+
+    /**
+     * Flags a deposit address as dirty, for example after it received funds from a sanctioned
+     * source, so the merchant stops reusing it.
+     *
+     * @param address The blockchain address to flag.
+     * @param options The per request overrides, may be {@code null}.
+     * @throws DvNetException If the request fails.
+     */
+    public void markDirty(final String address, final RequestOptions options) throws DvNetException {
+        Objects.requireNonNull(address, "address");
+
+        HttpRequest request = HttpRequest.builder(HttpMethod.POST, DIRTY_ADDRESS_PATH)
+                .body(jsonMapper.writeValue(Collections.singletonMap("address", address)))
+                .options(options)
+                .build();
+
+        send(request);
     }
 }

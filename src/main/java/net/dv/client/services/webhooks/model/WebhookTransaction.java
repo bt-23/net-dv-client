@@ -6,9 +6,10 @@ import java.util.Objects;
 /**
  * The blockchain transaction a webhook reports.
  *
- * <p>{@code txHash} together with {@code bcUniqKey} identifies the event uniquely. DV.net retries a
- * webhook up to thirty times until it is acknowledged, so store that pair and ignore an event you
- * have already processed.</p>
+ * <p>DV.net redelivers a webhook until your endpoint acknowledges it, up to thirty times by
+ * default, and a merchant can also resend it by hand from the dashboard. Deduplicate on the event
+ * type together with {@code txId}, the key the server itself uses; {@code bcUniqKey} may be
+ * {@code null} and is not a reliable key on its own.</p>
  */
 public final class WebhookTransaction {
 
@@ -27,7 +28,7 @@ public final class WebhookTransaction {
      *
      * @param txId       The transaction identifier in the merchant system.
      * @param txHash     The blockchain transaction hash.
-     * @param bcUniqKey  The unique event key within the transaction.
+     * @param bcUniqKey  The unique event key within the transaction, may be {@code null}.
      * @param currency   The currency ticker, for example {@code LTC}.
      * @param currencyId The currency identifier, for example {@code LTC.Litecoin}.
      * @param blockchain The blockchain the transaction happened on.
@@ -74,7 +75,7 @@ public final class WebhookTransaction {
     }
 
     /**
-     * Returns the unique event key within the transaction.
+     * Returns the unique event key within the transaction, may be {@code null}.
      *
      * @return The unique event key within the transaction.
      */

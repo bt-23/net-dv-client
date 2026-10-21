@@ -5,6 +5,10 @@ import java.util.Objects;
 
 /**
  * A withdrawal from a processing wallet that reached the recipient.
+ *
+ * <p>Unlike the deposit events, the payload carries neither a {@code status} nor a {@code wallet}
+ * member, so {@link #getStatus()} and {@link #getWallet()} return {@code null}. Use
+ * {@link #getWithdrawalId()} to match it against the withdrawal you created.</p>
  */
 public final class WithdrawalEvent implements WebhookEvent {
 
@@ -23,13 +27,13 @@ public final class WithdrawalEvent implements WebhookEvent {
      *
      * @param type         The kind of event, always {@link WebhookType#WITHDRAWAL_FROM_PROCESSING_RECEIVED}.
      * @param rawType      The raw wire value of the type.
-     * @param status       The withdrawal status, for example {@code completed}.
+     * @param status       The status, {@code null} as the server sends none for withdrawals.
      * @param amount       The withdrawal amount in USD.
-     * @param createdAt    The moment the withdrawal was created.
-     * @param paidAt       The moment the withdrawal was executed.
+     * @param createdAt    The moment DV.net recorded the transaction.
+     * @param paidAt       The moment the transaction was created on the blockchain.
      * @param transaction  The blockchain transaction that carried the withdrawal.
-     * @param wallet       The processing wallet the funds left from, may be {@code null}.
-     * @param withdrawalId The withdrawal identifier, may be {@code null} when the payload carried none.
+     * @param wallet       The wallet, {@code null} as the server sends none for withdrawals.
+     * @param withdrawalId The identifier of the withdrawal, as returned when it was created.
      */
     public WithdrawalEvent(final WebhookType type,
                            final String rawType,
@@ -72,9 +76,9 @@ public final class WithdrawalEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the withdrawal status, for example {@code completed}.
+     * Returns the status, which the server does not send for withdrawals.
      *
-     * @return The withdrawal status, for example {@code completed}.
+     * @return The status, {@code null} for the payloads DV.net currently sends.
      */
     @Override
     public String getStatus() {
@@ -92,9 +96,9 @@ public final class WithdrawalEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the moment the withdrawal was created.
+     * Returns the moment DV.net recorded the transaction.
      *
-     * @return The moment the withdrawal was created.
+     * @return The moment DV.net recorded the transaction.
      */
     @Override
     public OffsetDateTime getCreatedAt() {
@@ -102,9 +106,9 @@ public final class WithdrawalEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the moment the withdrawal was executed.
+     * Returns the moment the transaction was created on the blockchain.
      *
-     * @return The moment the withdrawal was executed.
+     * @return The moment the transaction was created on the blockchain.
      */
     @Override
     public OffsetDateTime getPaidAt() {
@@ -122,9 +126,9 @@ public final class WithdrawalEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the processing wallet the funds left from, may be {@code null}.
+     * Returns the wallet, which the server does not send for withdrawals.
      *
-     * @return The processing wallet the funds left from, may be {@code null}.
+     * @return The wallet, {@code null} for the payloads DV.net currently sends.
      */
     @Override
     public WebhookWallet getWallet() {
@@ -132,9 +136,9 @@ public final class WithdrawalEvent implements WebhookEvent {
     }
 
     /**
-     * Returns the withdrawal identifier, may be {@code null} when the payload carried none.
+     * Returns the identifier of the withdrawal, as returned when it was created.
      *
-     * @return The withdrawal identifier, may be {@code null} when the payload carried none.
+     * @return The withdrawal identifier.
      */
     public String getWithdrawalId() {
         return withdrawalId;

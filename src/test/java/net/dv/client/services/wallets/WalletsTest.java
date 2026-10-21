@@ -145,7 +145,25 @@ class WalletsTest {
 
         wallets.hotBalances("10");
 
-        assertEquals("10", capturedRequest().getQueryParameters().get("min_balance"));
+        assertEquals("10", capturedRequest().getQueryParameter("min_balance"));
+    }
+
+    @Test
+    void markDirtyPostsTheAddress() throws Exception {
+        when(transport.execute(any(HttpRequest.class)))
+                .thenReturn(new HttpResponse(200, "{\"code\":200,\"message\":\"success mark dirty\"}"));
+
+        wallets.markDirty("TXk9ArDLcnbAd7BsxHhY5nCcJPBQr9dyMV");
+
+        HttpRequest request = capturedRequest();
+        assertEquals(HttpMethod.POST, request.getMethod());
+        assertEquals("/api/v1/external/wallet/addresses/dirty", request.getPath());
+        assertEquals("{\"address\":\"TXk9ArDLcnbAd7BsxHhY5nCcJPBQr9dyMV\"}", request.getBody());
+    }
+
+    @Test
+    void markDirtyRejectsAMissingAddress() {
+        assertThrows(NullPointerException.class, () -> wallets.markDirty(null));
     }
 
     @Test

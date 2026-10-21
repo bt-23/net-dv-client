@@ -37,6 +37,12 @@ class DateTimesTest {
     }
 
     @Test
+    void returnsNullForTheGoZeroTimeTheServerSendsForAnUnsetTimestamp() {
+        assertNull(DateTimes.parse("0001-01-01T00:00:00Z"));
+        assertNull(DateTimes.parse("0001-01-01T00:00:00"));
+    }
+
+    @Test
     void rejectsAValueThatIsNotATimestamp() {
         assertThrows(DateTimeParseException.class, () -> DateTimes.parse("yesterday"));
     }

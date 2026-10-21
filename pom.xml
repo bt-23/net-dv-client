@@ -6,7 +6,7 @@
 
     <groupId>net.dv.client</groupId>
     <artifactId>net-dv-client</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <packaging>jar</packaging>
 
     <name>dv.net java client</name>
@@ -21,8 +21,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- 5.6.x is the last httpclient5 line supporting Java 8. -->
-        <httpclient5.version>5.6.3</httpclient5.version>
-        <jackson.version>2.22.1</jackson.version>
+        <httpclient5.version>5.6.5</httpclient5.version>
+        <jackson.version>2.22.4</jackson.version>
         <jackson-annotations.version>2.22</jackson-annotations.version>
         <!-- 5.14.x is the last JUnit 5 line supporting Java 8. -->
         <junit.version>5.14.0</junit.version>

@@ -13,9 +13,11 @@ public final class WebhookWallet {
     /**
      * Constructs a {@code WebhookWallet}.
      *
-     * @param id              The wallet identifier in the merchant system.
+     * @param id              The wallet identifier in the merchant system, {@code null} when the deposit is not tied
+     *                        to a customer wallet.
      * @param storeExternalId The identifier of the customer in your own system, as supplied when the wallet was
-     *                       created. This is what links the event back to your order.
+     *                        created, or an empty string when the deposit is not tied to a customer wallet. This is
+     *                        what links the event back to your order.
      */
     public WebhookWallet(final String id,
                          final String storeExternalId) {
@@ -26,7 +28,7 @@ public final class WebhookWallet {
     /**
      * Returns the wallet identifier in the merchant system.
      *
-     * @return The wallet identifier in the merchant system.
+     * @return The wallet identifier, {@code null} when the deposit is not tied to a customer wallet.
      */
     public String getId() {
         return id;
@@ -36,8 +38,8 @@ public final class WebhookWallet {
      * Returns the identifier of the customer in your own system, as supplied when the wallet was created. This is
      * what links the event back to your order.
      *
-     * @return The identifier of the customer in your own system, as supplied when the wallet was created. This is
-     *         what links the event back to your order.
+     * @return The identifier of the customer in your own system, or an empty string when the deposit is not tied to
+     *         a customer wallet.
      */
     public String getStoreExternalId() {
         return storeExternalId;

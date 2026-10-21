@@ -5,6 +5,7 @@ import net.dv.client.core.net.HttpMethod;
 import net.dv.client.core.net.HttpRequest;
 import net.dv.client.core.net.HttpResponse;
 import net.dv.client.core.net.HttpTransport;
+import net.dv.client.services.balances.model.EvmData;
 import net.dv.client.services.balances.model.ExchangeBalances;
 import net.dv.client.services.balances.model.ProcessingWalletBalance;
 import net.dv.client.services.balances.model.TronData;
@@ -77,15 +78,15 @@ class BalancesTest {
     }
 
     @Test
-    void processingWalletsJoinsTheFiltersWithCommas() throws Exception {
+    void processingWalletsRepeatsTheFilterKeyForEveryValue() throws Exception {
         when(transport.execute(any(HttpRequest.class)))
                 .thenReturn(new HttpResponse(200, Payloads.PROCESSING_WALLET_BALANCES));
 
         balances.processingWallets(Arrays.asList("tron", "ethereum"), Collections.singletonList("USDT.Tron"));
 
         HttpRequest request = capturedRequest();
-        assertEquals("tron,ethereum", request.getQueryParameters().get("blockchains"));
-        assertEquals("USDT.Tron", request.getQueryParameters().get("currencies"));
+        assertEquals(Arrays.asList("tron", "ethereum"), request.getQueryParameters().get("blockchains"));
+        assertEquals(Collections.singletonList("USDT.Tron"), request.getQueryParameters().get("currencies"));
     }
 
     @Test
@@ -128,6 +129,26 @@ class BalancesTest {
         assertEquals("2000", tron.getAvailableBandwidthForUse());
         assertEquals("42", tron.getTronTransferData().getMaxTransfersTrc20());
         assertEquals("310", tron.getTronTransferData().getMaxTransfersNative());
+        assertNull(balances.processingWallets().get(0).getAdditionalData().getEvmData());
+    }
+
+    @Test
+    void processingWalletsDecodesTheEvmGasEstimates() throws Exception {
+        when(transport.execute(any(HttpRequest.class)))
+                .thenReturn(new HttpResponse(200, Payloads.PROCESSING_WALLET_BALANCES));
+
+        ProcessingWalletBalance wallet = balances.processingWallets().get(1);
+        EvmData evm = wallet.getAdditionalData().getEvmData();
+
+        assertNull(wallet.getBalance());
+        assertNull(wallet.getAdditionalData().getTronData());
+        assertEquals("10000000", evm.getSuggestedGasPrice());
+        assertEquals("120", evm.getMaxTransfersErc20());
+        assertEquals("300", evm.getMaxTransfersNative());
+        assertEquals("650000000000", evm.getCostPerErc20());
+        assertEquals("210000000000", evm.getCostPerNative());
+        assertTrue(evm.getL2());
+        assertEquals("30000000000", evm.getL1DataFeeEstimate());
     }
 
     private HttpRequest capturedRequest() throws Exception {

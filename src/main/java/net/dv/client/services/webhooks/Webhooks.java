@@ -23,6 +23,12 @@ import java.util.Objects;
  * <p>Always verify before decoding, and always verify against the body exactly as it arrived. Any
  * re-serialization changes the bytes and the signature will no longer match.</p>
  *
+ * <p>DV.net treats a delivery as acknowledged only when the response body is the JSON document
+ * {@value #SUCCESS_RESPONSE}; the HTTP status code alone is not enough. Anything else, including an
+ * empty {@code 200}, is retried with an exponential back-off starting at one minute and capped at
+ * one day, up to thirty attempts by default. Reply with {@link #SUCCESS_RESPONSE} once the event is
+ * stored, and also for duplicates you already processed.</p>
+ *
  * <pre>{@code
  * String body = readRequestBody(request);
  * String signature = request.getHeader(Webhooks.SIGNATURE_HEADER);
@@ -33,9 +39,14 @@ import java.util.Objects;
  *     fulfilOrder(event.getWallet().getStoreExternalId());
  * } else if (event instanceof PaymentNotConfirmedEvent) {
  *     markPending(event.getWallet().getStoreExternalId());
+ * } else if (event instanceof PaymentAmlBlockedEvent) {
+ *     flagForReview(event.getWallet().getStoreExternalId());
  * } else if (event instanceof WithdrawalEvent) {
  *     recordPayout(((WithdrawalEvent) event).getWithdrawalId());
  * }
+ *
+ * response.setContentType("application/json");
+ * response.getWriter().write(Webhooks.SUCCESS_RESPONSE);
  * }</pre>
  */
 public final class Webhooks {
@@ -44,6 +55,11 @@ public final class Webhooks {
      * The header carrying the webhook signature.
      */
     public static final String SIGNATURE_HEADER = "X-Sign";
+
+    /**
+     * The response body DV.net requires to consider a delivery acknowledged.
+     */
+    public static final String SUCCESS_RESPONSE = "{\"success\":true}";
 
     private static final String HASH_ALGORITHM = "SHA-256";
 
@@ -74,13 +90,18 @@ public final class Webhooks {
      * <p>The expected signature is the SHA-256 hash of the raw payload concatenated with the
      * secret, hex encoded. The comparison is constant time.</p>
      *
+     * <p>A blank secret is always rejected: without one the signature is a plain hash anybody can
+     * compute. A store without a secret also sends an empty {@value #SIGNATURE_HEADER} header for
+     * manual resends and dashboard test deliveries, so configure the secret in the merchant
+     * settings before going live.</p>
+     *
      * @param payload   The raw request body, exactly as received.
      * @param signature The value of the {@value #SIGNATURE_HEADER} header.
      * @param secret    The webhook secret found in the merchant settings.
      * @return {@code true} when the signature matches.
      */
     public boolean verify(final String payload, final String signature, final String secret) {
-        if (payload == null || signature == null || secret == null) {
+        if (payload == null || Strings.isBlank(signature) || Strings.isBlank(secret)) {
             return false;
         }
 

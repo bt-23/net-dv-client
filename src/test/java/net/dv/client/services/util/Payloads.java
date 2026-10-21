@@ -115,9 +115,12 @@ public final class Payloads {
             + "  ]\n"
             + "}\n");
 
-    /** The response of {@code GET /api/v1/external/store/currencies/{id}/rate}. */
-    public static final String CURRENCY_RATE = envelope(""
-            + "{\"code\": \"USDT\", \"rate\": \"1.0002\", \"rate_source\": \"binance\"}\n");
+    /** The response of {@code GET /api/v1/external/store/currencies/rate}. */
+    public static final String CURRENCY_RATES = envelope(""
+            + "[\n"
+            + "  {\"code\": \"USDT\", \"rate_source\": \"binance\", \"rate\": \"1.0102\", \"original_rate\": \"1.0002\"},\n"
+            + "  {\"code\": \"BTC\", \"rate_source\": \"binance\", \"rate\": \"64872.42\", \"original_rate\": \"64230.12\"}\n"
+            + "]\n");
 
     /** The response of {@code POST /api/v1/external/wallet}. */
     public static final String WALLET = envelope(""
@@ -141,7 +144,7 @@ public final class Payloads {
             + "      \"dirty\": false,\n"
             + "      \"created_at\": \"2025-03-17T12:57:52.449795Z\",\n"
             + "      \"updated_at\": \"2025-03-17T12:57:52.449795Z\",\n"
-            + "      \"deleted_at\": null\n"
+            + "      \"deleted_at\": \"0001-01-01T00:00:00Z\"\n"
             + "    }\n"
             + "  ]\n"
             + "}\n");
@@ -199,6 +202,23 @@ public final class Payloads {
             + "        \"total_bandwidth\": \"2500\",\n"
             + "        \"total_used_bandwidth\": \"500\",\n"
             + "        \"available_bandwidth_for_use\": \"2000\"\n"
+            + "      }\n"
+            + "    }\n"
+            + "  },\n"
+            + "  {\n"
+            + "    \"address\": \"0x52908400098527886E0F7030069857D2E4169EE7\",\n"
+            + "    \"blockchain\": \"arbitrum\",\n"
+            + "    \"currency\": {\"id\": \"ETH.Arbitrum\", \"code\": \"ETH\", \"name\": \"Ethereum\", \"blockchain\": \"arbitrum\"},\n"
+            + "    \"assets\": [],\n"
+            + "    \"additional_data\": {\n"
+            + "      \"evm_data\": {\n"
+            + "        \"suggested_gas_price\": \"10000000\",\n"
+            + "        \"max_transfers_erc20\": \"120\",\n"
+            + "        \"max_transfers_native\": \"300\",\n"
+            + "        \"cost_per_erc20\": \"650000000000\",\n"
+            + "        \"cost_per_native\": \"210000000000\",\n"
+            + "        \"is_l2\": true,\n"
+            + "        \"l1_data_fee_estimate\": \"30000000000\"\n"
             + "      }\n"
             + "    }\n"
             + "  }\n"
