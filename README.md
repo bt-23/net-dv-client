@@ -11,7 +11,7 @@ Runs on **Java 8 or later**. Built on Apache HttpClient 5 and Jackson 2, with no
 <dependency>
     <groupId>net.dv.client</groupId>
     <artifactId>net-dv-client</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
 </dependency>
 ```
 
